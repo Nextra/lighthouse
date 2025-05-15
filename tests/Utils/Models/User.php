@@ -143,6 +143,25 @@ final class User extends Authenticatable
         return isset($this->attributes['tasks_count']);
     }
 
+    public function tasksCompletedLoaded(): bool
+    {
+        return isset($this->attributes['tasks_completed']);
+    }
+
+    public function tasksCount(): ?int
+    {
+        return $this->tasksCountLoaded()
+            ? $this->attributes['tasks_count']
+            : null;
+    }
+
+    public function tasksCompleted(): ?int
+    {
+        return $this->tasksCompletedLoaded()
+            ? $this->attributes['tasks_completed']
+            : null;
+    }
+
     public function postsCommentsLoaded(): bool
     {
         return $this->relationLoaded('posts')

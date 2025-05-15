@@ -478,4 +478,48 @@ final class CountDirectiveDBTest extends DBTestCase
             ],
         ]);
     }
+
+    public function testAliasedCountRelationAndEagerLoadsTheCount(): void
+    {
+        $this->schema = /** @lang GraphQL */ '
+        type Query {
+            users: [User!] @all
+        }
+
+        type User {
+            tasks_count: Int @count(relation: "tasks as tasks_completed")
+        }
+        ';
+
+        factory(User::class, 3)->create()
+            ->each(static function (User $user, int $index): void {
+                factory(Task::class, 3 - $index)->create([
+                    'user_id' => $user->getKey(),
+                ]);
+            });
+
+        $this->assertQueryCountMatches(2, function (): void {
+            $this->graphQL(/** @lang GraphQL */ '
+            {
+                users {
+                    tasks_count
+                }
+            }
+            ')->assertExactJson([
+                'data' => [
+                    'users' => [
+                        [
+                            'tasks_count' => 3,
+                        ],
+                        [
+                            'tasks_count' => 2,
+                        ],
+                        [
+                            'tasks_count' => 1,
+                        ],
+                    ],
+                ],
+            ]);
+        });
+    }
 }
