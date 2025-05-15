@@ -78,4 +78,63 @@ final class WithCountDirectiveTest extends DBTestCase
         }
         ');
     }
+
+    public function testAliasedRelationCountWithDifferentScopes(): void
+    {
+        $this->schema = /** @lang GraphQL */ '
+        type Query {
+            users: [User!] @all
+        }
+
+        type User {
+            tasksCount: Int
+                @withCount(relation: "tasks")
+                @method
+
+            tasksCompleted: Int
+                @withCount(relation: "tasks as tasks_completed", scopes: ["completed"])
+                @method
+        }
+        ';
+
+        factory(User::class, 3)->create()
+            ->each(static function (User $user, int $index): void {
+                factory(Task::class, 3 - $index)->create([
+                    'user_id' => $user->getKey(),
+                ]);
+
+                factory(Task::class, 3 - $index)->create([
+                    'user_id' => $user->getKey(),
+                    'completed_at' => now(),
+                ]);
+            });
+
+        $this->assertQueryCountMatches(3, function (): void {
+            $this->graphQL(/** @lang GraphQL */ '
+            {
+                users {
+                    tasksCount
+                    tasksCompleted
+                }
+            }
+            ')->assertExactJson([
+                'data' => [
+                    'users' => [
+                        [
+                            'tasksCount' => 6,
+                            'tasksCompleted' => 3,
+                        ],
+                        [
+                            'tasksCount' => 4,
+                            'tasksCompleted' => 2,
+                        ],
+                        [
+                            'tasksCount' => 2,
+                            'tasksCompleted' => 1,
+                        ],
+                    ],
+                ],
+            ]);
+        });
+    }
 }

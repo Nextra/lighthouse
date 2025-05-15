@@ -22,13 +22,24 @@ class AggregateModelsLoader implements ModelsLoader
 
     public function extract(Model $model): mixed
     {
+        return static::extractAggregate($model, $this->relation, $this->column, $this->function);
+    }
+
+    public static function extractAggregate(Model $model, string $relationName, string $column, string $function): mixed
+    {
         /**
          * This is the name that Eloquent gives to the attribute that contains the aggregate.
          *
          * @see \Illuminate\Database\Eloquent\Concerns\QueriesRelationships::withAggregate()
          */
-        $attribute = Str::snake(
-            \Safe\preg_replace('/[^[:alnum:][:space:]_]/u', '', "{$this->relation} {$this->function} {$this->column}"),
+        $segments = explode(' ', $relationName);
+
+        if (count($segments) === 3 && strtolower($segments[1]) === 'as') {
+            $attribute = $segments[2];
+        }
+
+        $attribute ??= Str::snake(
+            \Safe\preg_replace('/[^[:alnum:][:space:]_]/u', '', "{$relationName} {$function} {$column}"),
         );
 
         return $model->getAttribute($attribute);
